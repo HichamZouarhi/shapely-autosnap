@@ -14,6 +14,7 @@ from fiona.crs import from_epsg
 gdf = gpd.read_file('SHAPES/ZONE SRO.shp')
 gdf.crs = from_epsg(2154)
 snapped_vertices = {}
+projected_vertices = {}
 
 def snap_geom(geom1, geom2, tolerance, code_entite):
 	if isinstance(geom1, geom.Polygon) and isinstance(geom2, geom.Polygon):
@@ -26,7 +27,8 @@ def snap_geom(geom1, geom2, tolerance, code_entite):
 				# if i == 35:
 				# 	pdb.set_trace()
 				print snapped_vertices[code_entite]
-			if i not in snapped_vertices[code_entite]:
+			if i not in snapped_vertices[code_entite] or \
+				(i in snapped_vertices[code_entite] and i in projected_vertices[code_entite]):
 				if closest_vertex != None:
 					snapped_vertices[code_entite].append(i)
 					if code_entite == 'NRO_08_003_056':
@@ -34,6 +36,7 @@ def snap_geom(geom1, geom2, tolerance, code_entite):
 					vertices1[i] = closest_vertex
 				elif geom.Point(vertex1).distance(geom2) <= tolerance:
 					snapped_vertices[code_entite].append(i)
+					projected_vertices[code_entite].append(i)
 					linear_ring = geom.LinearRing(geom2.exterior.coords)
 					if code_entite == 'NRO_08_003_056':
 						# if i == 35:
@@ -73,6 +76,7 @@ def get_closest_vertex(vertex1, vertices2, tolerance):
 
 for index, row in gdf.iterrows():
 	snapped_vertices[row['CODE SRO']] = []
+	projected_vertices[row['CODE SRO']] = []
 	tmp_gdf = gdf.copy()
 	tmp_gdf['distance'] = tmp_gdf.distance(row['geometry'])
 	tmp_gdf = tmp_gdf[tmp_gdf['distance'] <= 100]
