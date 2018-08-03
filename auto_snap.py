@@ -5,7 +5,7 @@
 import geopandas as gpd
 import time
 import os
-# import sys
+import sys
 import pdb
 import shapely.geometry as geom
 from shapely.ops import nearest_points
@@ -183,6 +183,8 @@ class AutoSnapper:
 
 
 if __name__ == '__main__':
+	layer = sys.argv[1]
+	tolerance = float(sys.argv[2])
 	process = AutoSnapper(os.getcwd())
-	process.snap('ZONE SRO', 50)
+	process.snap(layer, tolerance)
 
