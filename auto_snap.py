@@ -23,7 +23,7 @@ class AutoSnapper:
 	def snap(self, layer, tolerance):
 
 		self.snapped_vertices = {}
-		gdf = gpd.read_file('SHAPES/' + layer + '.shp')
+		gdf = gpd.read_file(layer)
 		# gdf.crs = from_epsg(2154)
 
 		if isinstance(list(gdf['geometry'])[0], geom.Polygon):
@@ -132,12 +132,12 @@ class AutoSnapper:
 				
 
 			gdf.loc[index, 'geometry'] = snapped_geom
-			gdf.to_file('SHAPES/' + layer +'_snapped.shp')
+			gdf.to_file(layer.strip('.shp') +'_snapped.shp')
 
 #------------------------------------------------------------------------------------------
 
 #------------------ SAME GDF / GEOMETRY TYPE = LINESTRING -------------------------
-	def snap_in_centroids(slef, gdf, layer, tolerance):
+	def snap_in_centroids(self, gdf, layer, tolerance):
 		'''
 			valid only for LineString Geometries
 		'''
@@ -150,7 +150,8 @@ class AutoSnapper:
 			tail = geom.Point(list(gdf.loc[[index]]['geometry'])[0].coords[-1])
 			self.snap_geom_to_centroid(tail, gdf, tolerance)
 
-		gdf.to_file('SHAPES/' + layer + '_snapped.shp')
+		gdf.drop('distance', axis=1, inplace=True)
+		gdf.to_file(layer.strip('.shp') + '_snapped.shp')
 
 	def snap_geom_to_centroid(self, point, gdf, tolerance):
 		'''
