@@ -20,16 +20,18 @@ class AutoSnapper:
 		self.snapped_vertices = None
 		self.tf = None
 
-	def snap(self, layer, tolerance):
+	def snap(self, layer, tolerance, points_path = None):
 
 		self.snapped_vertices = {}
 		gdf = gpd.read_file(layer)
 		# gdf.crs = from_epsg(2154)
-
-		if isinstance(list(gdf['geometry'])[0], geom.Polygon):
-			self.snap_gdf(gdf, layer, tolerance)
-		elif isinstance(list(gdf['geometry'])[0], geom.LineString):
-			self.snap_in_centroids(gdf, layer, tolerance)
+		if points_path is None:
+			if isinstance(list(gdf['geometry'])[0], geom.Polygon):
+				self.snap_gdf(gdf, layer, tolerance)
+			elif isinstance(list(gdf['geometry'])[0], geom.LineString):
+				self.snap_in_centroids(gdf, layer, tolerance)
+		else:
+			self.snap_lines_to_points(gdf, layer, points_path, tolerance)
 
 		self.tf = time.time()
 		print "execution time : ", self.tf-self.t0, " seconds" 
@@ -182,10 +184,48 @@ class AutoSnapper:
 
 #---------------------------------------------------------------------------------------------
 
+#------------------- DIFFERENT GDF / GEOMETRY TYPE = LINESTRING --------------------
+
+	def snap_lines_to_points(self, lines, layer_path, points_path, tolerance):
+		# lines = gpd.read_file(layer_path)
+		points = gpd.read_file(points_path)
+		lines['geometry'] = lines['geometry'].apply(lambda x: self.snap_line_to_points(x, points, tolerance))
+		lines.to_file(layer_path.strip('.shp') + '_snapped.shp')
+
+	def snap_line_to_points(self, geometry, points, tolerance):
+		coords = list(geometry.coords)
+		# pdb.set_trace()
+		head = geom.Point(coords[0])
+		tail = geom.Point(coords[-1])
+
+		points['dist_LS'] = points.distance(geometry)
+		points_ = points[points['dist_LS'] <= tolerance]
+
+		# snap head
+		points_['dist_LS'] = points_.distance(head)
+		try:
+			point_head = list(points_[points_['dist_LS'] <= tolerance]['geometry'])[0]
+			coords[0] = point_head.coords[0]
+		except IndexError:
+			pass
+
+		# snap tail
+		points_['dist_LS'] = points_.distance(tail)
+		try:
+			point_tail = list(points_[points_['dist_LS'] <= tolerance]['geometry'])[0]
+			coords[-1] = point_tail.coords[0]
+		except IndexError:
+			pass
+		# pdb.set_trace()
+		return geom.LineString(coords)
 
 if __name__ == '__main__':
 	layer = sys.argv[1]
 	tolerance = float(sys.argv[2])
+	try:
+		points_path = sys.argv[3]
+	except IndexError:
+		points_path = None
 	process = AutoSnapper(os.getcwd())
-	process.snap(layer, tolerance)
+	process.snap(layer, tolerance, points_path)
 
